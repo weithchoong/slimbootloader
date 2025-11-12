@@ -28,7 +28,15 @@ BITS    16
 ; @return         None  This routine jumps to SEC and does not return
 ;
 Main16:
+    ; POST Code: Reset vector executed
+    ; mov     al, 0x10
+    ; out     0x80, al
+
     OneTimeCall EarlyInit16
+
+    ; POST Code: Early init complete, transitioning to 32-bit
+    ; mov     al, 0x11  
+    ; out     0x80, al
 
     ;
     ; Transition the processor from 16-bit real mode to 32-bit flat mode
@@ -36,6 +44,9 @@ Main16:
     OneTimeCall TransitionFromReal16To32BitFlat
 
 BITS    32
+    ; POST Code: Now in 32-bit mode
+    ; mov     al, 0x12
+    ; out     0x80, al
 
 %ifdef ARCH_IA32
     ;

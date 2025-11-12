@@ -80,7 +80,7 @@ def main():
     fd.write (''.join(dlt_lines))
     fd.close ()
 
-    # run cfg stitch tool again to generate new slimbootloader.bin
+    # run cfg stitch tool again to generate new SlimBootloader.bin
     res = run_command (cmds)
     if res:
         return res

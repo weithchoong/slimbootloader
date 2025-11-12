@@ -23,10 +23,31 @@ extern  ASM_PFX(PcdGet32(PcdStage1StackSize))
 extern  ASM_PFX(PcdGet32(PcdStage1DataSize))
 extern  ASM_PFX(PcdGet32(PcdStage1StackBaseOffset))
 
+%macro POST_CODE 1
+    mov     ax, %1
+    out     80h, ax
+%endmacro
+
+; Add delay macro for debugging visibility
+; This creates a simple CPU loop to slow down execution
+%macro DEBUG_DELAY 1
+    push    rax
+    push    rcx
+    mov     rcx, %1              ; Load delay count into RCX
+delay_loop_%1:
+    dec     rcx                  ; Decrement counter
+    jnz     delay_loop_%1        ; Jump if not zero (continue loop)
+    pop     rcx                  ; Restore original RCX
+    pop     rax                  ; Restore original RAX
+%endmacro
 
 global  ASM_PFX(_ModuleEntryPoint)
 ASM_PFX(_ModuleEntryPoint):
         movd    mm0, eax
+
+        ; POST Code: Entry into SecEntry.nasm
+        POST_CODE 00a0h
+        DEBUG_DELAY 0100000h     ; ~1 second delay (16.7 million cycles)
 
         ;
         ; RDI: time stamp
@@ -51,6 +72,14 @@ ASM_PFX(_ModuleEntryPoint):
         mov     eax, dword [rax]
         add     rsp, rax
 
+        ; POST Code: Stack setup complete
+        POST_CODE 00a1h
+        DEBUG_DELAY 080000h      ; ~0.5 second delay (8.4 million cycles)
+        
+        ; POST Code: Before C code transition
+        POST_CODE 00a2h
+
+
         ;
         ; Check stage1 stack base offset
         ;
@@ -67,7 +96,27 @@ ASM_PFX(_ModuleEntryPoint):
         bts     rbx, 1               ; Set BIT1 in Status
         mov     rsp, rdx             ; Set ESP to the end
 
+        
 CheckStackRangeDone:
+        ; POST Code: Stack validation start
+        POST_CODE 00b0h
+        
+        ; Display stack base in POST codes (for debugging)
+        mov     rax, rcx              ; Stack base
+        shr     rax, 24               ; Get high byte
+        out     80h, ax               ; Output high byte as 00 XX
+        
+        DEBUG_DELAY 050000h           ; ~0.2 second delay
+        
+        mov     rax, rcx
+        shr     rax, 16
+        out     80h, ax               ; Output mid-high byte as 00 XX
+        
+        DEBUG_DELAY 050000h           ; ~0.2 second delay
+        
+        ; POST Code: Stack validation complete
+        POST_CODE 00b1h
+
         ;
         ; CpuBist error check
         ;
@@ -95,6 +144,13 @@ CheckStatusDone:
 
         sub     rsp, 32              ; 32 bytes shadow store for x64
         and     esp, 0xfffffff0      ; Align stack to 16 bytes
+
+        
+
         call    ASM_PFX(SecStartup)  ; Jump to C code
         jmp     $
+
+
+
+        
 

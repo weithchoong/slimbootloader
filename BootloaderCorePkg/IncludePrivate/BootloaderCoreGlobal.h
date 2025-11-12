@@ -223,4 +223,31 @@ GetLoaderGlobalDataPointer (
   VOID
   );
 
+
+
+// POST Code Map for Stage1A
+#define POST_SECENTRY_START           0xA0
+#define POST_SECENTRY_STACK_SETUP     0xA1  
+#define POST_SECENTRY_BEFORE_C        0xA2
+#define POST_C_ENTRY                  0xA3
+#define POST_C_PARAM_PARSED           0xA4
+#define POST_C_BEFORE_FSP_T           0xA5
+#define POST_C_FSP_T_COMPLETE         0xA6
+#define POST_C_GDT_SETUP              0xA7
+#define POST_C_BEFORE_STAGE1B         0xA8
+
+// Error codes
+#define POST_ERROR_CPU_BIST           0xE0
+#define POST_ERROR_STACK_RANGE        0xE1
+#define POST_ERROR_FSP_T_FAIL         0xE2
+
+// Debug codes  
+#define POST_DEBUG_STACK_BASE         0xB0
+#define POST_DEBUG_STACK_TOP          0xB1
+#define POST_DEBUG_PARAM_STATUS       0xC0
+#define POST_DEBUG_PARAM_TIMESTAMP    0xC1
+#define POST_DEBUG_PARAM_CAR          0xC2
+
+
+
 #endif

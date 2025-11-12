@@ -52,8 +52,8 @@ class Board(BaseBoard):
         self.LOADER_ACPI_RECLAIM_MEM_SIZE = 0x000090000
         self.HAVE_FIT_TABLE       = 1
         self.HAVE_VBT_BIN         = 1 # TBD
-        self.HAVE_VERIFIED_BOOT   = 1
-        self.HAVE_MEASURED_BOOT   = 1
+        self.HAVE_VERIFIED_BOOT   = 0
+        self.HAVE_MEASURED_BOOT   = 0
         self.HAVE_FLASH_MAP       = 1
         self.HAVE_ACPI_TABLE      = 1
         self.HAVE_PSD_TABLE       = 1

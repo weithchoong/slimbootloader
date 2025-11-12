@@ -98,7 +98,7 @@ class BaseBoard(object):
         # NOTE: Variables starting with '_' will not be exported to Platform.dsc
 
 
-        self.LOGO_FILE              = 'Platform/CommonBoardPkg/Logo/Logo.bmp'
+        self.LOGO_FILE              = 'Platform/CommonBoardPkg/Logo/SlimBootloader_White_Blue.bmp'
 
         self._RSA_SIGN_TYPE          = 'RSA2048'
         self._SIGN_HASH              = 'SHA2_256'
@@ -161,7 +161,7 @@ class BaseBoard(object):
         self.ENABLE_PCI_ENUM       = 1
         self.ENABLE_SMP_INIT       = 1
         self.ENABLE_FSP_LOAD_IMAGE = 0
-        self.ENABLE_SPLASH         = 0
+        self.ENABLE_SPLASH         = 0   
         self.ENABLE_FRAMEBUFFER_INIT = 0
         self.ENABLE_PRE_OS_CHECKER = 0
         self.ENABLE_CRYPTO_SHA_OPT  = IPP_CRYPTO_OPTIMIZATION_MASK['SHA256_V8']

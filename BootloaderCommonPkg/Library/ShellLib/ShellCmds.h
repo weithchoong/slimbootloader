@@ -32,6 +32,9 @@ extern CONST SHELL_COMMAND ShellCommandUsbDev;
 extern CONST SHELL_COMMAND ShellCommandCorruptComp;
 extern CONST SHELL_COMMAND ShellCommandAcpi;
 extern CONST SHELL_COMMAND ShellCommandSetup;
+extern CONST SHELL_COMMAND ShellCommandHello;
+extern CONST SHELL_COMMAND ShellCommandPlatInfo;
+// extern CONST SHELL_COMMAND ShellCommandTime;
 
 /**
   Load shell commands.

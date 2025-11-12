@@ -6,6 +6,10 @@
 **/
 
 #include "Stage1A.h"
+#include <Library/DebugLib.h>
+#include <Library/IoLib.h>
+
+
 
 CONST CHAR8*  mBootloaderName = "Intel Slim Bootloader";
 
@@ -143,7 +147,6 @@ AllocateCopyBuffer (
     }
   }
 }
-
 
 /**
   Prepare and load Stage1B into proper location.
@@ -380,15 +383,20 @@ SecStartup2 (
     SetCurrentBootPartition ((FlashMap->Attributes & FLASH_MAP_ATTRIBUTES_BACKUP_REGION) ? BackupPartition : PrimaryPartition);
   }
 
+  
+
   // Call board hook to enable debug
   BoardInit (PostTempRamInit);
   AddMeasurePoint (0x1040);
+
 
   // Set DebugPrintErrorLevel to default PCD.
   SetDebugPrintErrorLevel (PcdGet32 (PcdDebugPrintErrorLevel));
 
   if (DebugCodeEnabled()) {
     DEBUG ((DEBUG_INFO, "\n============= %a STAGE1A =============\n",mBootloaderName));
+    DEBUG ((DEBUG_INFO, "\n=== STAGE 1A GT PLAN ===\n")); 
+    DEBUG ((DEBUG_INFO, "Hello World ! My name is Superman \n"));
   } else {
     DEBUG ((DEBUG_INIT, "\n%a\n", mBootloaderName));
   }
@@ -435,6 +443,37 @@ SecStartup2 (
   ContinueEntry (&Stage1aParam);
 }
 
+VOID
+AnalyzeStage1AParameters (
+  IN STAGE1A_ASM_PARAM  *Stage1AParam
+  )
+{
+  // POST Code: Parameter analysis start
+  IoWrite8(0x80, 0xC0);
+  
+  // Check status flags
+  if (Stage1AParam->Status.CpuBist & BIT0) {
+    IoWrite8(0x80, 0xE0);  // CPU BIST error
+  }
+  
+  if (Stage1AParam->Status.StackOutOfRange & BIT1) {
+    IoWrite8(0x80, 0xE1);  // Stack range error
+  }
+  
+  // Display timestamp (for debugging)
+  IoWrite8(0x80, 0xC1);
+  IoWrite8(0x80, (UINT8)(Stage1AParam->TimeStamp >> 24));
+  IoWrite8(0x80, (UINT8)(Stage1AParam->TimeStamp >> 16));
+  
+  // Display CAR base (Cache-as-RAM)
+  IoWrite8(0x80, 0xC2);
+  IoWrite8(0x80, (UINT8)(Stage1AParam->CarBase >> 24));
+  IoWrite8(0x80, (UINT8)(Stage1AParam->CarBase >> 16));
+  
+  // POST Code: Parameter analysis complete
+  IoWrite8(0x80, 0xC3);
+}
+
 /**
 
   Entry point to the C language phase of Stage1A.
@@ -453,8 +492,12 @@ VOID
 EFIAPI
 SecStartup (
   IN VOID  *Params
+  // IN VOID  *TempRamParams
   )
 {
+  // POST Code: Entered C code successfully
+  IoWrite8(0x80, 0xA3);
+
   LOADER_GLOBAL_DATA        LdrGlobalData;
   STAGE_IDT_TABLE           IdtTable;
   STAGE_GDT_TABLE           GdtTable;
@@ -466,6 +509,15 @@ SecStartup (
 
   TimeStamp   = ReadTimeStamp ();
   Stage1aAsmParam = (STAGE1A_ASM_PARAM *)Params;
+
+  // STAGE1A_ASM_PARAM  *Stage1AParam;
+  // Stage1AParam = (STAGE1A_ASM_PARAM *)TempRamParams;
+
+  // Analyze parameters (before/after??)
+  AnalyzeStage1AParameters(Stage1aAsmParam);
+
+  // POST Code: Parameter parsing complete
+  IoWrite8(0x80, 0xA4);
 
   // Init global data
   PageTblSize = IS_X64 ? 8 * EFI_PAGE_SIZE : 0;
@@ -489,9 +541,16 @@ SecStartup (
   // Any platform (board init lib) can update these according to
   // the config data passed in or these defaults remain
   LdrGlobal->LdrFeatures           = FEATURE_MEASURED_BOOT | FEATURE_ACPI;
+
+  // POST Code: Before FSP-T TempRamInit
+  IoWrite8(0x80, 0xA5);
+
   // TempRam Base and Size
   LdrGlobal->CarBase               = Stage1aAsmParam->CarBase;
   LdrGlobal->CarSize               = Stage1aAsmParam->CarTop - LdrGlobal->CarBase;
+  
+  // POST Code: FSP-T TempRamInit complete  
+  IoWrite8(0x80, 0xA6);
 
   LoadGdt (&GdtTable, (IA32_DESCRIPTOR *)&mGdt);
   UpdateSelectors();
@@ -589,4 +648,42 @@ ContinueFunc (
 
   // Error: Stage 1B returned
   CpuHalt ("No valid Stage1B image!");
+}
+
+VOID
+DisplayMemoryLayout (
+  IN STAGE1A_ASM_PARAM  *Stage1AParam
+  )
+{
+  UINT32 CarBase, CarTop;
+  
+  // POST Code: Memory layout analysis start
+  IoWrite8(0x80, 0xD0);
+  
+  // Extract CAR (Cache-as-RAM) information
+  CarBase = (UINT32)(Stage1AParam->CarBase);
+  CarTop = (UINT32)(Stage1AParam->CarBase);
+  
+  // Display CAR base address
+  IoWrite8(0x80, 0xD1);
+  IoWrite8(0x80, (UINT8)(CarBase >> 24));
+  IoWrite8(0x80, (UINT8)(CarBase >> 16));
+  IoWrite8(0x80, (UINT8)(CarBase >> 8));
+  IoWrite8(0x80, (UINT8)(CarBase));
+  
+  // Display CAR top address  
+  IoWrite8(0x80, 0xD2);
+  IoWrite8(0x80, (UINT8)(CarTop >> 24));
+  IoWrite8(0x80, (UINT8)(CarTop >> 16));
+  IoWrite8(0x80, (UINT8)(CarTop >> 8));
+  IoWrite8(0x80, (UINT8)(CarTop));
+  
+  // Calculate and display CAR size
+  UINT32 CarSize = CarTop - CarBase;
+  IoWrite8(0x80, 0xD3);
+  IoWrite8(0x80, (UINT8)(CarSize >> 24));
+  IoWrite8(0x80, (UINT8)(CarSize >> 16));
+  
+  // POST Code: Memory layout analysis complete
+  IoWrite8(0x80, 0xDF);
 }

@@ -35,6 +35,9 @@ LoadShellCommands (
   ShellCommandRegister (Shell, &ShellCommandMtrr);
   ShellCommandRegister (Shell, &ShellCommandUcode);
   ShellCommandRegister (Shell, &ShellCommandCls);
+  ShellCommandRegister (Shell, &ShellCommandHello);
+  ShellCommandRegister (Shell, &ShellCommandPlatInfo);
+  //ShellCommandRegister (Shell, &ShellCommandTime);
 
   if (!FeaturePcdGet (PcdMiniShellEnabled)) {
     // More Shell commands

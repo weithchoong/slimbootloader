@@ -221,7 +221,7 @@ class Board(BaseBoard):
 
         self._CFGDATA_DEF_FILE = 'CfgDataDefAdln.yaml'
         self._CFGDATA_INT_FILE = []
-        self._CFGDATA_EXT_FILE = [self._generated_cfg_file_prefix + 'CfgDataInt_Adln_Crb_Ddr5.dlt', self._generated_cfg_file_prefix + 'CfgDataInt_Adln_Rvp_Lpddr5.dlt']
+        self._CFGDATA_EXT_FILE = [self._generated_cfg_file_prefix + 'CfgDataInt_Adln_Crb_Ddr5.dlt', self._generated_cfg_file_prefix + 'CfgDataInt_Adln_Rvp_Lpddr5.dlt', self._generated_cfg_file_prefix + 'CfgDataExt_Up2Pro7000.dlt']
 
     def PlatformBuildHook (self, build, phase):
         if phase == 'pre-build:before':
