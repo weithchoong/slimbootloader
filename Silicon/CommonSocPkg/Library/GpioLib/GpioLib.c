@@ -41,6 +41,7 @@ GpioIsPadHostOwned (
     DEBUG ((GPIO_DEBUG_ERROR, "GPIO ERROR: Gpio pad not owned by host (Group=%d, Pad=%d)!\n", GroupIndex, PadNumber));
     return FALSE;
   }
+  DEBUG ((GPIO_DEBUG_ERROR, "GPIOlib 1\n"));
 
   return TRUE;
 }
@@ -82,9 +83,12 @@ GpioIsPadValid (
   if (PadNumber >= GpioGroupInfo[GroupIndex].PadPerGroup) {
     DEBUG ((GPIO_DEBUG_ERROR, "GPIO ERROR: Pin number (%d) exceeds possible range for this group\n", PadNumber));
     goto Error;
+  }else{
+    DEBUG ((DEBUG_INFO, "Group: %d \n", GpioGetGroupFromGpioPad (GpioPad)));
+    return TRUE;
   }
 
-  return TRUE;
+  // return TRUE;
 Error:
   ASSERT (FALSE);
   return FALSE;
@@ -131,7 +135,7 @@ GpioIsGroupAndDwNumValid (
   if (DwNum > GPIO_GET_DW_NUM (GpioGroupInfo[GroupIndex].PadPerGroup - 1)){
     goto Error;
   }
-
+  DEBUG ((DEBUG_INFO, "GPIOlib 2\n"));
   return TRUE;
 Error:
   ASSERT (FALSE);
@@ -248,6 +252,7 @@ GpioWritePadCfgReg (
   if (PadCfgLockTx) {
     GpioLockPadCfgTx (GpioPad);
   }
+  // DEBUG ((GPIO_DEBUG_ERROR, "GPIOlib 3\n"));
 }
 
 //
@@ -350,6 +355,7 @@ GpioReadReg (
   }
 
   *ReadVal = MmioRead32 (GetPchPcrAddress (GpioGroupInfo[GroupIndex].Community, RegOffset));
+  // DEBUG ((GPIO_DEBUG_ERROR, "GPIOlib 4\n"));
 
   return EFI_SUCCESS;
 }
@@ -475,7 +481,7 @@ GpioWriteReg (
       return Status;
     }
   }
-
+  // DEBUG ((GPIO_DEBUG_ERROR, "GPIOlib 5\n"));
   return EFI_SUCCESS;
 }
 
@@ -565,7 +571,9 @@ GpioWriteLockReg (
              &Response
              );
   ASSERT_EFI_ERROR (Status);
+  // DEBUG ((GPIO_DEBUG_ERROR, "GPIOlib 6\n"));
   return Status;
+ 
 }
 
 /**
@@ -584,6 +592,7 @@ GpioResetConfigFromPadRstCfg (
   IN  UINT32             PadRstCfg
   )
 {
+  DEBUG((DEBUG_INFO,"enter GpioResetConfigFromPadRstCfg"));
   GPIO_GROUP           Group;
 
   static GPIO_RESET_CONFIG  GppPadRstCfgToGpioResetConfigMap[] = {
@@ -597,15 +606,20 @@ GpioResetConfigFromPadRstCfg (
                               GpioResumeReset};
 
   Group = GpioGetGroupFromGpioPad (GpioPad);
+  DEBUG ((DEBUG_INFO, "Group - %d \n", GpioGetGroupFromGpioPad (GpioPad)));
 
   if (GpioIsDswGroup (Group) && PadRstCfg < 4) {
+    // DEBUG ((GPIO_DEBUG_ERROR, "GPIOlib 7\n"));
     return GpdPadRstCfgToGpioResetConfigMap[PadRstCfg];
   } else if (PadRstCfg < 3) {
+    // DEBUG ((GPIO_DEBUG_ERROR, "GPIOlib 7.1\n"));
     return GppPadRstCfgToGpioResetConfigMap[PadRstCfg];
   } else {
+    DEBUG ((GPIO_DEBUG_ERROR, "GPIO config: GpioResetDefault \n"));
     ASSERT (FALSE);
     return GpioResetDefault;
   }
+  DEBUG((DEBUG_INFO,"exit GpioResetConfigFromPadRstCfg"));
 }
 
 /**
@@ -630,6 +644,13 @@ GpioPadRstCfgFromResetConfig (
   GPIO_GROUP           Group;
 
   Group = GpioGetGroupFromGpioPad (GpioPad);
+
+  DEBUG((DEBUG_INFO,"GpioResetConfig: 0x%x",GpioResetConfig));
+  DEBUG((DEBUG_INFO,"GpioResetDefault: 0x%x",GpioResetDefault));
+  DEBUG((DEBUG_INFO,"GpioHostDeepReset: 0x%x",GpioHostDeepReset));
+  DEBUG((DEBUG_INFO,"GpioPlatformReset: 0x%x",GpioPlatformReset));
+  DEBUG((DEBUG_INFO,"GpioResumeReset: 0x%x",GpioResumeReset));
+  DEBUG((DEBUG_INFO,"GpioDswReset: 0x%x",GpioDswReset));
 
   switch (GpioResetConfig) {
     case GpioResetDefault:
@@ -658,10 +679,13 @@ GpioPadRstCfgFromResetConfig (
       break;
     default:
       goto Error;
+      DEBUG((DEBUG_INFO,"Incorrect case -> goto default\n"));
+      // DEBUG((DEBUG_INFO,"*PadRstCfg - %d\n",*PadRstCfg));
   }
-
+  // DEBUG ((GPIO_DEBUG_ERROR, "GPIOlib 8\n"));
   return EFI_SUCCESS;
 Error:
+  DEBUG((DEBUG_INFO,"Incorrect case/value for GpioResetConfig\n"));
   ASSERT (FALSE);
   return EFI_INVALID_PARAMETER;
 }
@@ -688,7 +712,9 @@ GpioConfigFromPadCfgRegValue (
   //
   // Get Reset Type (PadRstCfg)
   //
+  DEBUG((DEBUG_INFO,"Enter GpioConfigFromPadCfgRegValue"));
   PadRstCfg = (PadCfgDwReg[0] & B_GPIO_PCR_RST_CONF) >> N_GPIO_PCR_RST_CONF;
+  DEBUG ((DEBUG_INFO, "PadRstCfg =%d!\n", PadRstCfg));
 
   GpioConfig->PowerConfig = GpioResetConfigFromPadRstCfg (
                               GpioPad,
@@ -737,6 +763,8 @@ GpioConfigFromPadCfgRegValue (
   // Get GPIO termination (Term)
   //
   GpioConfig->ElectricalConfig = ((PadCfgDwReg[1] & B_GPIO_PCR_TERM) >> (N_GPIO_PCR_TERM - (N_GPIO_ELECTRICAL_CONFIG_TERMINATION_BIT_POS + 1))) | (0x1 << N_GPIO_ELECTRICAL_CONFIG_TERMINATION_BIT_POS);
+
+  DEBUG((DEBUG_INFO,"Exit GpioConfigFromPadCfgRegValue"));
 }
 
 /**
@@ -838,7 +866,7 @@ GpioGetPadConfig (
   // Get Pad Configuration Lock Tx state
   //
   GpioData->LockConfig |= ((!((RegVal >> PadBitPosition) & 0x1)) << 2) | 0x1;
-
+  // DEBUG ((GPIO_DEBUG_ERROR, "GPIOlib 9\n"));
   return EFI_SUCCESS;
 }
 
@@ -863,6 +891,7 @@ GpioPadCfgRegValueFromGpioConfig (
 {
   UINT32               PadRstCfg;
 
+  DEBUG((DEBUG_INFO,"Enter GpioPadCfgRegValueFromGpioConfig"));
   //
   // Configure Reset Type (PadRstCfg)
   // Reset configuration depends on group type.
@@ -924,6 +953,8 @@ GpioPadCfgRegValueFromGpioConfig (
   //
   PadCfgDwRegMask[1] |= ((((GpioConfig->ElectricalConfig & B_GPIO_ELECTRICAL_CONFIG_TERMINATION_MASK) >> N_GPIO_ELECTRICAL_CONFIG_TERMINATION_BIT_POS) == GpioHardwareDefault) ? 0x0 : B_GPIO_PCR_TERM);
   PadCfgDwReg[1] |= (((GpioConfig->ElectricalConfig & B_GPIO_ELECTRICAL_CONFIG_TERMINATION_MASK) >> (N_GPIO_ELECTRICAL_CONFIG_TERMINATION_BIT_POS + 1)) << N_GPIO_PCR_TERM);
+
+  DEBUG((DEBUG_INFO,"Exit GpioPadCfgRegValueFromGpioConfig"));
 
   return EFI_SUCCESS;
 }
@@ -1337,11 +1368,15 @@ GpioSetPadResetConfig (
   UINT32      PadRstCfg;
   EFI_STATUS  Status;
 
+  DEBUG((DEBUG_INFO,"Enter GpioSetPadResetConfig"));
+
   if (!GpioIsPadValid (GpioPad)) {
+    DEBUG((DEBUG_INFO,"GPIO pad invalid"));
     return EFI_INVALID_PARAMETER;
   }
 
   if (!GpioIsPadHostOwned (GpioPad)) {
+    DEBUG((DEBUG_INFO,"GPIO not owned by host"));
     return EFI_UNSUPPORTED;
   }
 
@@ -1389,11 +1424,14 @@ GpioGetPadResetConfig (
   UINT32      PadRstCfg;
   UINT32      PadCfgDw0Reg;
 
+  DEBUG((DEBUG_INFO,"Entering GpioGetPadResetConfig"));
   if (!GpioIsPadValid (GpioPad)) {
+    DEBUG((DEBUG_INFO,"GPIO pad invalid 222"));
     return EFI_INVALID_PARAMETER;
   }
 
   if (!GpioIsPadHostOwned (GpioPad)) {
+    DEBUG((DEBUG_INFO,"GPIO not owned by host 222"));
     return EFI_UNSUPPORTED;
   }
 
@@ -1403,6 +1441,8 @@ GpioGetPadResetConfig (
   // Get Reset Type (PadRstCfg)
   //
   PadRstCfg = (PadCfgDw0Reg & B_GPIO_PCR_RST_CONF) >> N_GPIO_PCR_RST_CONF;
+
+  DEBUG((DEBUG_INFO,"PadRstCfg - %d\n", PadRstCfg));
 
   *Value = GpioResetConfigFromPadRstCfg (
              GpioPad,

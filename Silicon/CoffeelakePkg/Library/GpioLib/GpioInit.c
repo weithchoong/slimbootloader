@@ -263,6 +263,7 @@ GpioConfigurePch (
       }
 
       PadNumber  = (UINT32) GPIO_GET_PAD_NUMBER (GpioData->GpioPad);
+      DEBUG((DEBUG_INFO,"Pad Number - %d\n",PadNumber));
 
       ZeroMem (PadCfgDwReg, sizeof (PadCfgDwReg));
       ZeroMem (PadCfgDwRegMask, sizeof (PadCfgDwRegMask));
