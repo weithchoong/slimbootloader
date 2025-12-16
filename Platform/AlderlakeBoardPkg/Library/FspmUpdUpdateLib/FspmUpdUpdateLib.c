@@ -188,6 +188,7 @@ UpdateFspConfig (
   SpdData[7] = (UINT32)(UINTN) (((MEM_SPD6_CFG_DATA *)FindConfigDataByTag (CDATA_MEM_SPD6_TAG))->MemorySpdPtr6);
   SpdData[8] = (UINT32)(UINTN) (((MEM_SPD7_CFG_DATA *)FindConfigDataByTag (CDATA_MEM_SPD7_TAG))->MemorySpdPtr7);
   SpdData[9] = (UINT32)(UINTN) (((MEM_SPD8_CFG_DATA *)FindConfigDataByTag (CDATA_MEM_SPD8_TAG))->MemorySpdPtr8);
+  SpdData[10] = (UINT32)(UINTN) (((MEM_SPD9_CFG_DATA *)FindConfigDataByTag (CDATA_MEM_SPD9_TAG))->MemorySpdPtr8);
 
 #if defined(PLATFORM_RPLA)
   UINT8 MemId;
@@ -508,6 +509,7 @@ UpdateFspConfig (
     CopyMem(SaDisplayConfigTable, (VOID *)(UINTN)mAdlNddr5CrbRowDisplayDdiConfig, sizeof(mAdlNddr5CrbRowDisplayDdiConfig));
     break;
   case PLATFORM_ID_ADL_N_LPDDR5_RVP:
+  case PLATFORM_ID_ADL_N_UP2PTWL: 
   case PLATFORM_ID_ADL_N_UP7EN50:
     // DP + DP
     CopyMem(SaDisplayConfigTable, (VOID *)(UINTN)mAdlNLpddr5RowDisplayDdiConfig, sizeof(mAdlNLpddr5RowDisplayDdiConfig));
@@ -623,6 +625,7 @@ UpdateFspConfig (
         Fspmcfg->Lp5CccConfig = 0xff;
         Fspmcfg->SkipCpuReplacementCheck = 0x0;
         break;
+      case PLATFORM_ID_ADL_N_UP2PTWL:
       case PLATFORM_ID_RPLP_LP5_AUTO_RVP:
       case PLATFORM_ID_RPLP_LP5_AUTO_CRB:
         Fspmcfg->PcieClkReqGpioMux[9] = 0x796e9000;
@@ -681,6 +684,7 @@ UpdateFspConfig (
         case PLATFORM_ID_ADL_P_DDR5_RVP:
         case PLATFORM_ID_ADL_P_UPXI12:
         case PLATFORM_ID_ADL_N_UP7EN50:
+        //case PLATFORM_ID_ADL_N_UP2PROTWL:
         case PLATFORM_ID_RPL_P_UPXI12:
           Fspmcfg->PchIshEnable       = 1;
       }

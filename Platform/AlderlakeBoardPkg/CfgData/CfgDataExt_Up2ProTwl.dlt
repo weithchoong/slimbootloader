@@ -74,7 +74,7 @@ MEMORY_CFG_DATA.WdtDisableAndLock | 0
 
 GRAPHICS_CFG_DATA.InternalGfx              | 0x2
 
-GEN_CFG_DATA.VbtImageId                    | 2
+GEN_CFG_DATA.VbtImageId                    | 1
 
 #Delta configuration for Silicon settings
 PLDSEL_CFG_DATA.PldSelGpio.Enable      | 1
@@ -112,6 +112,5 @@ POWER_CFG_DATA.AtomTurboRatioLimitNumCore   | {0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7
 POWER_CFG_DATA.Eist                         | 0x1
 POWER_CFG_DATA.TdcEnable                    | {0x1, 0x1, 0x0, 0x0, 0x0}
 POWER_CFG_DATA.EnableItbm                   | 0x1
-
 
 
