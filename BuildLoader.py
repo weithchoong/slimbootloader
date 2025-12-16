@@ -22,6 +22,7 @@ import shutil
 import argparse
 import subprocess
 import multiprocessing
+import PrepareBuildComponentBin as PreBuild
 from   ctypes import *
 from   BuildUtility import *
 
@@ -115,7 +116,7 @@ class BaseBoard(object):
 
         self.VERINFO_IMAGE_ID       = 'SB_???? '
         self.VERINFO_PROJ_ID        = 1
-        self.VERINFO_CORE_MAJOR_VER = 1
+        self.VERINFO_CORE_MAJOR_VER = 2
         self.VERINFO_CORE_MINOR_VER = 0
 
         self.VERINFO_PROJ_MAJOR_VER = 0
@@ -187,6 +188,7 @@ class BaseBoard(object):
         self.SUPPORT_ARI           = 0
         self.SUPPORT_SR_IOV        = 0
         self.SUPPORT_X2APIC        = 0
+        self.TXT_ENABLED           = 0
 
         self.BUILD_CSME_UPDATE_DRIVER    = 0
 
@@ -222,6 +224,12 @@ class BaseBoard(object):
         self.STAGE2_LOAD_HIGH      = 1
         self.PAYLOAD_LOAD_HIGH     = 1
         self.PAYLOAD_EXE_BASE      = 0x00800000
+        self.ENABLE_ELF_SUPPORT    = 1
+        self.ENABLE_FV_SUPPORT     = 1
+        self.ENABLE_PE32_SUPPORT   = 1
+        self.ENABLE_AB_SLOT_SUPPORT = 1
+        self.ENABLE_MULTIBOOT_SUPPORT  = 1
+        self.ENABLE_MULTIBOOT2_SUPPORT = 1
 
         #     0: Direct access from flash
         # other: Load image into memory address
@@ -258,6 +266,7 @@ class BaseBoard(object):
         self._TOOL_CHAIN           = ''
         self._PAYLOAD_NAME         = ''
         self._FSP_PATH_NAME        = ''
+        self._SMBIOS_YAML_FILE     = ''
         self._EXTRA_INC_PATH       = []
 
         self._PLATFORM_ID          = None
@@ -446,6 +455,19 @@ class Build(object):
             fit_entry.set_values(addr, module_size, 0x100, 0x7, 0)
             print ('  Patching entry %d with 0x%08X:0x%08X - BIOS Module(Stage1B)' % (num_fit_entries, fit_entry.address, fit_entry.size))
             num_fit_entries     += 1
+
+            # TXT POLICY
+            if self._board.TXT_ENABLED == 1:
+                IndexPort = 0x0070 #CMOS index port
+                DataPort  = 0x0071 #CMOS data port
+                Width     = 0x01   #1 byte of data
+                Bit       = 0x04   #Bit 4 of the data pointed by CMOS offset
+                Index     = 0x002a #CMOS offset for TXT enable
+                addr = IndexPort + (DataPort << 16) + (Width << 32) + (Bit << 40) + (Index << 48)
+                fit_entry = FIT_ENTRY.from_buffer(rom, fit_offset + (num_fit_entries+1)*16)
+                fit_entry.set_values(addr, 0, 0, 0xa, 0)
+                print ('  Patching entry %d with 0x%08X:0x%08X - BIOS Module(Stage1B)' % (num_fit_entries, fit_entry.address, fit_entry.size))
+                num_fit_entries     += 1
 
             # KM
             addr = self._board.ACM_BASE + self._board.ACM_SIZE - (self._board.KM_SIZE + self._board.BPM_SIZE)
@@ -649,7 +671,7 @@ class Build(object):
 
             return parent_size
 
-        # Create compoent list and update base and offset
+        # Create component list and update base and offset
         img_list         = self._img_list
         region_name_list = [img[0] for img in img_list]
         comp_list        = []
@@ -1171,26 +1193,19 @@ class Build(object):
         fsp_path = os.path.join(fsp_dir, self._fsp_basename + '.bin')
 
         if self._board.HAVE_FSP_BIN:
-            check_build_component_bin = os.path.join(tool_dir, 'PrepareBuildComponentBin.py')
-            if os.path.exists(check_build_component_bin):
+            # Determine target flag
+            target = '/d' if self._board.FSPDEBUG_MODE else '/r'
 
-                # Create basic command
-                cmd = [ sys.executable,
-                        check_build_component_bin,
-                        work_dir,
-                        self._board.SILICON_PKG_NAME,
-                        self._board.FSP_INF_FILE,
-                        self._board.MICROCODE_INF_FILE]
-
-                # Add target
-                if (self._board.FSPDEBUG_MODE):
-                    cmd.append('/d')
-                else:
-                    cmd.append('/r')
-
-                ret = subprocess.call(cmd)
-                if ret:
-                    raise Exception  ('Failed to prepare build component binaries !')
+            try:
+                PreBuild.ProcessFspAndMicrocodeInf (
+                    work_dir,
+                    self._board.SILICON_PKG_NAME,
+                    self._board.FSP_INF_FILE,
+                    self._board.MICROCODE_INF_FILE,
+                    target
+                    )
+            except Exception as e:
+                raise Exception(f'Failed to process FSP and uCode INF: {str(e)}')
 
         # create FSP size and UPD size can be known
         fsp_list = ['FSP_T', 'FSP_M', 'FSP_S']
@@ -1303,10 +1318,22 @@ class Build(object):
         platform_dsc_path = os.path.join(sbl_dir, 'BootloaderCorePkg', 'Platform.dsc')
         self.create_dsc_inc_file (platform_dsc_path)
 
+        # process INF files having [UserExtensions.SBL."CopyList"]
+        try:
+            PreBuild.ProcessInfFileCopyList (sbl_dir, [self._board.FSP_INF_FILE, self._board.MICROCODE_INF_FILE])
+        except Exception as e:
+            raise Exception(f'Failed to process other INF files: {str(e)}')
+
         # rebase FSP accordingly
         if self._board.HAVE_FSP_BIN:
             rebase_fsp(fsp_path, self._fv_dir, self._board.FSP_T_BASE, self._board.FSP_M_BASE, self._board.FSP_S_BASE)
             split_fsp(os.path.join(self._fv_dir, 'Fsp.bin'), self._fv_dir)
+
+        # Create SMBIOS binary
+        if self._board._SMBIOS_YAML_FILE:
+            smbios_yaml_file = os.path.join(os.environ['PLT_SOURCE'], self._board._SMBIOS_YAML_FILE)
+            smbios_bin_file  = os.path.join(self._fv_dir, 'smbios.bin')
+            gen_smbios_bin(smbios_yaml_file, smbios_bin_file)
 
         # create master key hash
         if self._board.HAVE_VERIFIED_BOOT:
@@ -1553,27 +1580,8 @@ def main():
             files.extend ([
             ])
 
-        def GetCopyList (driver_inf):
-            fd = open (driver_inf, 'r')
-            lines = fd.readlines()
-            fd.close ()
-
-            have_copylist_section = False
-            copy_list      = []
-            for line in lines:
-                line = line.strip ()
-                if line.startswith('['):
-                    if line.startswith('[UserExtensions.SBL."CopyList"]'):
-                        have_copylist_section = True
-                    else:
-                        have_copylist_section = False
-
-                if have_copylist_section:
-                    match = re.match("^(.+)\\s*:\\s*(.+)", line)
-                    if match:
-                        copy_list.append((match.group(1).strip(), match.group(2).strip()))
-
-            return copy_list
+        # Remove files in [UserExtensions.SBL."CopyList"] in INF files
+        PreBuild.ProcessInfFileCopyList (sbl_dir, [], True)
 
         if args.board:
             for index, name in enumerate(board_names):
@@ -1595,7 +1603,7 @@ def main():
                         dest_dir = plt_dir
 
                     if os.path.exists(fsp_inf_full_path):
-                        for _, file in GetCopyList (fsp_inf_full_path):
+                        for _, file in PreBuild.GetCopyList (fsp_inf_full_path):
                             file_full_path = os.path.join(dest_dir, file)
                             if os.path.exists(file_full_path):
                                 print('Removing %s' % file_full_path)
@@ -1613,7 +1621,7 @@ def main():
                         dest_dir = plt_dir
 
                     if os.path.exists(micorcode_inf_full_path):
-                        for _, file in GetCopyList (micorcode_inf_full_path):
+                        for _, file in PreBuild.GetCopyList (micorcode_inf_full_path):
                             file_full_path = os.path.join(dest_dir, file)
                             if os.path.exists(file_full_path):
                                 print('Removing %s' % file_full_path)
